@@ -73,4 +73,4 @@ jobs:
 
       - name: Executar Playbook Ansible para Instalar Docker
         run: |
-          ansible-playbook -i inventory ansible/install_docker.yaml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"
+          ansible-playbook -i inventory ansible/playbook.yaml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"

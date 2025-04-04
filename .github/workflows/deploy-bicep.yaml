@@ -10,7 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  validate:
+    name: 🔎 Validar Bicep
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
@@ -22,17 +23,52 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Instalar o Bicep
+        run: az bicep install
+
+      - name: Criar Resource Group Temporário
+        run: az group create --name bicep-validation-tmp --location eastus
+
+      - name: Validar Template Bicep
         run: |
-          az bicep install
+          az deployment group validate \
+            --resource-group bicep-validation-tmp \
+            --template-file main.bicep \
+            --parameters adminPassword=${{ secrets.ADMIN_PASSWORD }}
+
+      - name: What-If (Prévia da implantação)
+        run: |
+          az deployment group what-if \
+            --resource-group bicep-validation-tmp \
+            --template-file main.bicep \
+            --parameters adminPassword=${{ secrets.ADMIN_PASSWORD }}
+
+      - name: Remover Resource Group Temporário
+        if: always()
+        run: az group delete --name bicep-validation-tmp --yes --no-wait
+
+  deploy:
+    name: 🚀 Deploy e Configuração
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Login no Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Instalar o Bicep
+        run: az bicep install
 
       - name: Verificar e Criar Grupo de Recursos
         run: |
-            if [ "$(az group exists --name bicep-rg)" = "false" ]; then
-              az group create --name bicep-rg --location eastus
-            else
-              echo "Grupo de recursos 'bicep-rg' já existe."
-            fi
-        
+          if [ "$(az group exists --name bicep-rg)" = "false" ]; then
+            az group create --name bicep-rg --location eastus
+          else
+            echo "Grupo de recursos 'bicep-rg' já existe."
+          fi
 
       - name: Implantar Bicep e Capturar Outputs
         id: deploy_bicep
@@ -75,3 +111,15 @@ jobs:
       - name: Executar Playbook Ansible para Instalar Docker
         run: |
           ansible-playbook -i inventory ansible/playbook.yaml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"
+
+      - name: Testar Aplicação HTTP na Porta 8081
+        run: |
+          echo "Aguardando aplicação subir..."
+          sleep 30
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://$PUBLIC_IP:8081)
+          if [ "$response" != "200" ]; then
+            echo "A aplicação não respondeu com sucesso. Status: $response"
+            exit 1
+          else
+            echo "✅ Aplicação respondendo com sucesso na porta 8081!"
+          fi

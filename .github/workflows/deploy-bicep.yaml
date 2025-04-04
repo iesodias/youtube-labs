@@ -116,16 +116,17 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Testar Aplicação HTTP na Porta 8081
+      - name: Testar Swagger na Porta 8081
         env:
           PUBLIC_IP: ${{ needs.deploy.outputs.publicIP }}
         run: |
-          echo "Esperando app responder na porta 8081..."
+          echo "Aguardando aplicação subir com Swagger..."
           sleep 30
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://$PUBLIC_IP:8081)
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://$PUBLIC_IP:8081/swagger-ui/index.html)
           if [ "$response" != "200" ]; then
-            echo "❌ A aplicação não respondeu como esperado. Status HTTP: $response"
+            echo "❌ Swagger não respondeu como esperado. Status HTTP: $response"
             exit 1
           else
-            echo "✅ Aplicação respondeu com sucesso na porta 8081!"
+            echo "✅ Swagger disponível em /swagger-ui/index.html na porta 8081!"
           fi
+      

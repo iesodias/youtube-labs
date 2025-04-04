@@ -25,13 +25,38 @@ jobs:
         run: |
           az bicep install
 
-      - name: Criar Grupo de Recursos
+      - name: Verificar e Criar Grupo de Recursos
         run: |
-          az group create --name bicep-rg --location eastus
-
-      - name: Implantar Bicep
+            if ! az group exists --name bicep-rg; then
+            az group create --name bicep-rg --location eastus
+            else
+            echo "Grupo de recursos 'bicep-rg' já existe."
+            fi
+        
+      - name: Implantar Bicep e Capturar Outputs
+        id: deploy_bicep
         run: |
-          az deployment group create \
+            outputs=$(az deployment group create \
             --resource-group bicep-rg \
             --template-file main.bicep \
-            --parameters adminPassword=${{ secrets.ADMIN_PASSWORD }}
+            --parameters adminPassword=${{ secrets.ADMIN_PASSWORD }} \
+            --query properties.outputs)
+            echo "$outputs" > bicep_outputs.json
+    
+      - name: Definir Variáveis de Ambiente
+        run: |
+            vmName=$(jq -r '.vmName.value' bicep_outputs.json)
+            adminUsername=$(jq -r '.adminUsername.value' bicep_outputs.json)
+            publicIP=$(jq -r '.publicIP.value' bicep_outputs.json)
+            sshCommand=$(jq -r '.sshCommand.value' bicep_outputs.json)
+            echo "VM_NAME=$vmName" >> $GITHUB_ENV
+            echo "ADMIN_USERNAME=$adminUsername" >> $GITHUB_ENV
+            echo "PUBLIC_IP=$publicIP" >> $GITHUB_ENV
+            echo "SSH_COMMAND=$sshCommand" >> $GITHUB_ENV
+    
+      - name: Validar Variáveis Capturadas
+        run: |
+            echo "Nome da VM: $VM_NAME"
+            echo "Nome do Administrador: $ADMIN_USERNAME"
+            echo "Endereço IP Público: $PUBLIC_IP"
+            echo "Comando SSH: $SSH_COMMAND"

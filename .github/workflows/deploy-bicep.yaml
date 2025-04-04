@@ -27,11 +27,12 @@ jobs:
 
       - name: Verificar e Criar Grupo de Recursos
         run: |
-          if ! az group exists --name bicep-rg; then
-            az group create --name bicep-rg --location eastus
-          else
-            echo "Grupo de recursos 'bicep-rg' já existe."
-          fi
+            if [ "$(az group exists --name bicep-rg)" = "false" ]; then
+              az group create --name bicep-rg --location eastus
+            else
+              echo "Grupo de recursos 'bicep-rg' já existe."
+            fi
+        
 
       - name: Implantar Bicep e Capturar Outputs
         id: deploy_bicep

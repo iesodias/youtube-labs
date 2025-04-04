@@ -115,10 +115,11 @@ jobs:
     name: ✅ Pós-Testes de Infra
     needs: deploy
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_IP: ${{ needs.deploy.outputs.publicIP }}
+      VM_NAME: ${{ needs.deploy.outputs.vmName }}
     steps:
       - name: Testar Swagger na Porta 8081
-        env:
-          PUBLIC_IP: ${{ needs.deploy.outputs.publicIP }}
         run: |
           echo "Aguardando aplicação subir com Swagger..."
           sleep 30
@@ -129,4 +130,34 @@ jobs:
           else
             echo "✅ Swagger disponível em /swagger-ui/index.html na porta 8081!"
           fi
-      
+
+      - name: Verificar status da VM
+        run: |
+          status=$(az vm get-instance-view \
+            --name "$VM_NAME" \
+            --resource-group bicep-rg \
+            --query "instanceView.statuses[?code=='PowerState/running'].displayStatus" \
+            --output tsv)
+
+          echo "Status da VM: $status"
+
+          if [ "$status" != "VM running" ]; then
+            echo "❌ A VM não está em execução!"
+            exit 1
+          else
+            echo "✅ VM está rodando com sucesso!"
+          fi
+
+      - name: Verificar regra da NSG para porta 8081
+        run: |
+          result=$(az network nsg rule list \
+            --nsg-name "$VM_NAME-nsg" \
+            --resource-group bicep-rg \
+            --query "[?destinationPortRange=='8081' && access=='Allow']")
+
+          if [ "$result" = "[]" ]; then
+            echo "❌ Porta 8081 não está liberada na NSG!"
+            exit 1
+          else
+            echo "✅ Porta 8081 está liberada corretamente na NSG!"
+          fi

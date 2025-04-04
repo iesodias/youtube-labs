@@ -27,50 +27,50 @@ jobs:
 
       - name: Verificar e Criar Grupo de Recursos
         run: |
-            if ! az group exists --name bicep-rg; then
+          if ! az group exists --name bicep-rg; then
             az group create --name bicep-rg --location eastus
-            else
+          else
             echo "Grupo de recursos 'bicep-rg' já existe."
-            fi
-        
+          fi
+
       - name: Implantar Bicep e Capturar Outputs
         id: deploy_bicep
         run: |
-            outputs=$(az deployment group create \
+          outputs=$(az deployment group create \
             --resource-group bicep-rg \
             --template-file main.bicep \
             --parameters adminPassword=${{ secrets.ADMIN_PASSWORD }} \
             --query properties.outputs)
-            echo "$outputs" > bicep_outputs.json
-    
+          echo "$outputs" > bicep_outputs.json
+
       - name: Definir Variáveis de Ambiente
         run: |
-            vmName=$(jq -r '.vmName.value' bicep_outputs.json)
-            adminUsername=$(jq -r '.adminUsername.value' bicep_outputs.json)
-            publicIP=$(jq -r '.publicIP.value' bicep_outputs.json)
-            sshCommand=$(jq -r '.sshCommand.value' bicep_outputs.json)
-            echo "VM_NAME=$vmName" >> $GITHUB_ENV
-            echo "ADMIN_USERNAME=$adminUsername" >> $GITHUB_ENV
-            echo "PUBLIC_IP=$publicIP" >> $GITHUB_ENV
-            echo "SSH_COMMAND=$sshCommand" >> $GITHUB_ENV
-    
+          vmName=$(jq -r '.vmName.value' bicep_outputs.json)
+          adminUsername=$(jq -r '.adminUsername.value' bicep_outputs.json)
+          publicIP=$(jq -r '.publicIP.value' bicep_outputs.json)
+          sshCommand=$(jq -r '.sshCommand.value' bicep_outputs.json)
+          echo "VM_NAME=$vmName" >> $GITHUB_ENV
+          echo "ADMIN_USERNAME=$adminUsername" >> $GITHUB_ENV
+          echo "PUBLIC_IP=$publicIP" >> $GITHUB_ENV
+          echo "SSH_COMMAND=$sshCommand" >> $GITHUB_ENV
+
       - name: Validar Variáveis Capturadas
         run: |
-            echo "Nome da VM: $VM_NAME"
-            echo "Nome do Administrador: $ADMIN_USERNAME"
-            echo "Endereço IP Público: $PUBLIC_IP"
-            echo "Comando SSH: $SSH_COMMAND"
+          echo "Nome da VM: $VM_NAME"
+          echo "Nome do Administrador: $ADMIN_USERNAME"
+          echo "Endereço IP Público: $PUBLIC_IP"
+          echo "Comando SSH: $SSH_COMMAND"
 
-      - name: Instalar Ansible
+      - name: Instalar Ansible e sshpass
         run: |
-            sudo apt-get update
-            sudo apt-get install -y ansible sshpass
-    
+          sudo apt-get update
+          sudo apt-get install -y ansible sshpass
+
       - name: Criar Inventário Ansible
         run: |
-            echo "[vm]" > inventory
-            echo "$PUBLIC_IP ansible_user=$ADMIN_USERNAME ansible_password=${{ secrets.ADMIN_PASSWORD }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
+          echo "[vm]" > inventory
+          echo "$PUBLIC_IP ansible_user=$ADMIN_USERNAME ansible_password=${{ secrets.ADMIN_PASSWORD }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> inventory
 
-      - name: Executar Playbook Ansible
+      - name: Executar Playbook Ansible para Instalar Docker
         run: |
-            ansible-playbook -i inventory ansible/playbook.yaml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"
+          ansible-playbook -i inventory ansible/install_docker.yaml --extra-vars "ansible_sudo_pass=${{ secrets.ADMIN_PASSWORD }}"

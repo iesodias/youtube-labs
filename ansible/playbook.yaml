@@ -1,14 +1,9 @@
 ---
 - name: Instalar Docker no Ubuntu
-  hosts: all
-  become: true
+  hosts: vm
+  become: yes
   tasks:
-    - name: Atualizar pacotes do sistema
-      apt:
-        update_cache: yes
-        upgrade: dist
-
-    - name: Instalar dependências necessárias
+    - name: Instalar dependências
       apt:
         name:
           - apt-transport-https
@@ -17,6 +12,7 @@
           - gnupg
           - lsb-release
         state: present
+        update_cache: yes
 
     - name: Adicionar chave GPG oficial do Docker
       apt_key:
@@ -28,7 +24,7 @@
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
         state: present
 
-    - name: Instalar Docker
+    - name: Atualizar cache do apt e instalar Docker
       apt:
         name: docker-ce
         state: present
@@ -43,5 +39,5 @@
     - name: Iniciar e habilitar serviço Docker
       systemd:
         name: docker
-        enabled: yes
         state: started
+        enabled: yes

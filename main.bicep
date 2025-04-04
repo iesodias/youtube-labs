@@ -38,6 +38,19 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-05-01' = {
           destinationAddressPrefix: '*'
         }
       }
+      {
+        name: 'Allow-HTTP-8081'
+        properties: {
+          priority: 1010
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '8081'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
     ]
   }
 }

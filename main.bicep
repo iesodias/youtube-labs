@@ -113,9 +113,9 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
     storageProfile: {
       imageReference: {
         publisher: 'Canonical'
-        offer: 'UbuntuServer'
-        sku: '19_04-daily-gen2'
-        version: '19.04.201910080'
+        offer: '0001-com-ubuntu-server-focal'
+        sku: '20_04-lts-gen2'
+        version: 'latest'        
       }
       osDisk: {
         createOption: 'FromImage'
